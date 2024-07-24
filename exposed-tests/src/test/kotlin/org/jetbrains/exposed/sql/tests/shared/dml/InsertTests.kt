@@ -611,6 +611,7 @@ class InsertTests : DatabaseTestsBase() {
                     append("INSERT IGNORE ")
                     append(insertStatement.substringAfter("INSERT "))
                 }
+
                 else -> {
                     append(insertStatement)
                     val identifier = if (db == TestDB.H2_V2_PSQL) "" else "(id) "
@@ -676,6 +677,7 @@ class InsertTests : DatabaseTestsBase() {
                     TestDB.SQLSERVER -> {
                         exec("${createStatement.trimIndent()} $computedName AS ($computation))")
                     }
+
                     else -> SchemaUtils.create(generatedTable)
                 }
 
@@ -748,6 +750,75 @@ class InsertTests : DatabaseTestsBase() {
         withTables(excludeSettings = TestDB.ALL - TestDB.ALL_POSTGRES, tester) {
             val result = tester.insert {}
             assertNotNull(result[tester.id])
+        }
+    }
+
+    @Test
+    fun testDefaultValuesAndNullableColumnsNotInArguments() {
+        val tester = object : Table() {
+            val default = varchar("default", 128).default("default")
+            val defaultExpression = varchar("defaultExpression", 128).defaultExpression(stringLiteral("defaultExpression"))
+            val nullable = varchar("nullable", 128).nullable()
+            val nullableDefaultNull = varchar("nullableDefaultNull", 128).nullable().default(null)
+            val nullableDefaultNotNull = varchar("nullableDefaultNotNull", 128).nullable().default("nullableDefaultNotNull")
+            val databaseGenerated = integer("databaseGenerated").withDefinition("DEFAULT 1").databaseGenerated()
+        }
+
+        withTables(tester) {
+            val statement = tester.insert { }
+
+            assertEqualLists(emptyList(), statement.arguments().flatten())
+        }
+    }
+
+    @Test
+    fun testDefaultValuesAndNullableColumnsNotInBatchInsertArguments2() {
+        val tester = object : IntIdTable("test_batch_insert_defaults") {
+            val number = integer("number")
+            val default = varchar("default", 128).default("default")
+            val defaultExpression = varchar("defaultExpression", 128).defaultExpression(stringLiteral("defaultExpression"))
+            val nullable = varchar("nullable", 128).nullable()
+            val nullableDefaultNull = varchar("nullableDefaultNull", 128).nullable().default(null)
+            val nullableDefaultNotNull = varchar("nullableDefaultNotNull", 128).nullable().default("nullableDefaultNotNull")
+            val databaseGenerated = integer("databaseGenerated").withDefinition("DEFAULT 1").databaseGenerated()
+        }
+
+        val testerWithFakeDefaults = object : IntIdTable("test_batch_insert_defaults") {
+            val number = integer("number")
+            val default = varchar("default", 128).default("default-fake")
+            val defaultExpression = varchar("defaultExpression", 128).defaultExpression(stringLiteral("defaultExpression-fake"))
+            val nullable = varchar("nullable", 128).nullable().default("null-fake")
+            val nullableDefaultNull = varchar("nullableDefaultNull", 128).nullable().default("null-fake")
+            val nullableDefaultNotNull = varchar("nullableDefaultNotNull", 128).nullable().default("nullableDefaultNotNull-fake")
+            val databaseGenerated = integer("databaseGenerated").default(-1)
+        }
+
+        withTables(tester) {
+            val statement = testerWithFakeDefaults.batchInsert(listOf(1, 2, 3)) {
+                this[testerWithFakeDefaults.number] = 10
+            }
+            statement.forEach {
+                println("id: ${it[testerWithFakeDefaults.id]}")
+            }
+
+            testerWithFakeDefaults.selectAll().forEach {
+//                if (currentDialect !is SQLServerDialect) {
+                assertEquals("default", it[testerWithFakeDefaults.default])
+                assertEquals("defaultExpression", it[testerWithFakeDefaults.defaultExpression])
+                assertEquals(null, it[testerWithFakeDefaults.nullable])
+                assertEquals(null, it[testerWithFakeDefaults.nullableDefaultNull])
+                assertEquals("nullableDefaultNotNull", it[testerWithFakeDefaults.nullableDefaultNotNull])
+                assertEquals(1, it[testerWithFakeDefaults.databaseGenerated])
+//                }
+//                if (currentDialect is SQLServerDialect) {
+//                    assertEquals("default-fake", it[testerWithFakeDefaults.default])
+//                    assertEquals("defaultExpression-fake", it[testerWithFakeDefaults.defaultExpression])
+//                    assertEquals("null-fake", it[testerWithFakeDefaults.nullable])
+//                    assertEquals("null-fake", it[testerWithFakeDefaults.nullableDefaultNull])
+//                    assertEquals("nullableDefaultNotNull-fake", it[testerWithFakeDefaults.nullableDefaultNotNull])
+//                    assertEquals(-1, it[testerWithFakeDefaults.databaseGenerated])
+//                }
+            }
         }
     }
 }

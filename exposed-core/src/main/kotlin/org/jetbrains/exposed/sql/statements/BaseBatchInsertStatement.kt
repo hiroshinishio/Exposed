@@ -77,7 +77,7 @@ abstract class BaseBatchInsertStatement(
         if (requiredInTargets.any()) {
             val columnList = requiredInTargets.joinToString { tr.fullIdentity(it) }
             throw BatchDataInconsistentException(
-                "Can't add a new batch because columns: $columnList don't have default values. DB defaults are not supported in batch inserts"
+                "Can't add a new batch   because columns: $columnList don't have default values. DB defaults are not supported in batch inserts"
             )
         }
     }
@@ -88,18 +88,26 @@ abstract class BaseBatchInsertStatement(
 
     override var arguments: List<List<Pair<Column<*>, Any?>>>? = null
         get() = field ?: run {
-            val nullableColumns by lazy {
-                allColumnsInDataSet().filter { it.columnType.nullable && !it.isDatabaseGenerated }
-            }
-            data.map { single ->
-                val valuesAndDefaults = super.valuesAndDefaults(single) as MutableMap
-                val nullableMap = (nullableColumns - valuesAndDefaults.keys).associateWith { null }
-                valuesAndDefaults.putAll(nullableMap)
-                valuesAndDefaults.toList().sortedBy { it.first }
-            }.apply { field = this }
-        }
+            val dataColumns = data.flatMap { it.keys }.toSet()
+            val result = data.map { single ->
+                val valuesAndDefaults = super.valuesAndClientDefaults(single) as MutableMap
 
-    override fun valuesAndDefaults(values: Map<Column<*>, Any?>) = arguments!!.first().toMap()
+                // TODO reuse allColumnsInDataSet?
+                val columns = (dataColumns + valuesAndDefaults.keys).toSet()
+
+                // We must be sure that all the rows have the same set of columns
+                // If some rows have missing values fill them with default/null values as before
+                columns.map { column ->
+                    val value = when {
+                        valuesAndDefaults.contains(column) -> valuesAndDefaults[column]
+                        column.dbDefaultValue != null -> DefaultValueMarker
+                        else -> null
+                    }
+                    column to value
+                }
+            }.apply { field = this }
+            result
+        }
 
     override fun prepared(transaction: Transaction, sql: String): PreparedStatementApi {
         return if (!shouldReturnGeneratedValues) {

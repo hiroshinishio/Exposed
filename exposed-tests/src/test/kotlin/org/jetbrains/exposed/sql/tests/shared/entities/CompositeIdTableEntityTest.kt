@@ -408,7 +408,6 @@ class CompositeIdTableEntityTest : DatabaseTestsBase() {
                 it[Offices.name] = "Office A"
                 it[Offices.areaCode] = 789
             }
-            val officeA = Office.new(officeAIdValue) {}
             val officeBIdValue = CompositeID {
                 it[Offices.zipCode] = "5C6 7D8"
                 it[Offices.name] = "Office B"
@@ -417,6 +416,7 @@ class CompositeIdTableEntityTest : DatabaseTestsBase() {
             val officeB = Office.new(officeBIdValue) {
                 publisher = publisherA
             }
+            val officeA = Office.new(officeAIdValue) {}
 
             // child entity references
             assertEquals(publisherA.id.value[Publishers.pubId], authorA.publisher.id.value[Publishers.pubId])
@@ -437,5 +437,21 @@ class CompositeIdTableEntityTest : DatabaseTestsBase() {
             assertEquals(officeB, publisherA.office)
             assertEqualCollections(publisherA.allOffices.toList(), listOf(officeB))
         }
+
+        // GOOD LOGS
+        // SQL: INSERT INTO publishers (isbn_code, publisher_name)  OUTPUT inserted.pub_id AS GENERATED_KEYS VALUES('a25f537f-a2b1-44be-9e20-a22521302664', 'Publisher A')
+        // SQL: INSERT INTO authors (pen_name, publisher_id, publisher_isbn)  OUTPUT inserted.id AS GENERATED_KEYS VALUES('Author A', 1, 'a25f537f-a2b1-44be-9e20-a22521302664'), ('Author B', 1, 'a25f537f-a2b1-44be-9e20-a22521302664')
+        // SQL: INSERT INTO books (author_id, title)  OUTPUT inserted.book_id AS GENERATED_KEYS VALUES(2, 'Book A'), (2, 'Book B')
+        // SQL: INSERT INTO reviews (book_id, code, "rank") VALUES (1, 'Not bad', 12345)
+        // SQL: SELECT reviews.code, reviews."rank", reviews.book_id FROM reviews WHERE reviews.book_id = 1
+        // SQL: SELECT authors.id, authors.publisher_id, authors.publisher_isbn, authors.pen_name FROM authors WHERE (authors.publisher_id = 1) AND (authors.publisher_isbn = 'a25f537f-a2b1-44be-9e20-a22521302664')
+        // SQL: INSERT INTO offices (area_code, "name", publisher_id, publisher_isbn, zip_code) VALUES (789, 'Office A', NULL, NULL, '1A2 3B4')
+        // SQL: INSERT INTO offices (area_code, "name", publisher_id, publisher_isbn, zip_code) VALUES (456, 'Office B', 1, 'a25f537f-a2b1-44be-9e20-a22521302664', '5C6 7D8')
+        // SQL: SELECT offices.zip_code, offices."name", offices.area_code, offices.staff, offices.publisher_id, offices.publisher_isbn FROM offices WHERE (offices.publisher_id = 1) AND (offices.publisher_isbn = 'a25f537f-a2b1-44be-9e20-a22521302664')
+        // SQL: DROP TABLE offices
+        // SQL: DROP TABLE reviews
+        // SQL: DROP TABLE books
+        // SQL: DROP TABLE authors
+        // SQL: DROP TABLE publishers
     }
 }

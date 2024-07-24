@@ -216,6 +216,11 @@ class JdbcDatabaseMetadataImpl(database: String, val metadata: DatabaseMetaData)
         val dialect = currentDialect
         val h2Mode = dialect.h2Mode
         return when {
+            // H2 JSON
+//            dialect is H2Dialect && defaultValue.startsWith("JSON '") && defaultValue.endsWith("'") -> {
+//                val result = defaultValue.replaceFirst("JSON ", "").trim('\'')
+//                result
+//            }
             // Check for MariaDB must be before MySql because MariaDBDialect as a class inherits MysqlDialect
             dialect is MariaDBDialect || h2Mode == H2CompatibilityMode.MariaDB -> when {
                 defaultValue.startsWith("b'") -> defaultValue.substringAfter("b'").trim('\'')

@@ -125,6 +125,10 @@ class Column<T>(
             val expressionSQL = currentDialect.dataTypeProvider.processForDefaultValue(defaultValue)
             if (!currentDialect.isAllowedAsColumnDefault(defaultValue)) {
                 val clientDefault = when {
+                    // After stopping the transfer all the default values inside insert statement, the statement below will not be correct.
+                    // To fix this, we should patch the column to make it `clientDefault` otherwise client won't send the default value.
+                    // It might be helpful to throw an exception to inform the user that something went wrong
+                    // and that they need to update the column themselves.
                     defaultValueFun != null -> " Expression will be evaluated on the client."
                     !columnType.nullable -> " Column will be created with NULL marker."
                     else -> ""

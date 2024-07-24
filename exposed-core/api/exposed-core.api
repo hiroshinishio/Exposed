@@ -2983,7 +2983,6 @@ public abstract class org/jetbrains/exposed/sql/statements/BaseBatchInsertStatem
 	public fun prepared (Lorg/jetbrains/exposed/sql/Transaction;Ljava/lang/String;)Lorg/jetbrains/exposed/sql/statements/api/PreparedStatementApi;
 	public fun set (Lorg/jetbrains/exposed/sql/Column;Ljava/lang/Object;)V
 	public fun setArguments (Ljava/util/List;)V
-	protected fun valuesAndDefaults (Ljava/util/Map;)Ljava/util/Map;
 }
 
 public final class org/jetbrains/exposed/sql/statements/BatchDataInconsistentException : java/lang/Exception {
@@ -3100,6 +3099,8 @@ public class org/jetbrains/exposed/sql/statements/InsertStatement : org/jetbrain
 	public fun setArguments (Ljava/util/List;)V
 	public final fun setInsertedCount (I)V
 	protected final fun toSqlString (Ljava/util/List;Z)Ljava/lang/String;
+	protected fun valuesAndClientDefaults (Ljava/util/Map;)Ljava/util/Map;
+	public static synthetic fun valuesAndClientDefaults$default (Lorg/jetbrains/exposed/sql/statements/InsertStatement;Ljava/util/Map;ILjava/lang/Object;)Ljava/util/Map;
 	protected fun valuesAndDefaults (Ljava/util/Map;)Ljava/util/Map;
 	public static synthetic fun valuesAndDefaults$default (Lorg/jetbrains/exposed/sql/statements/InsertStatement;Ljava/util/Map;ILjava/lang/Object;)Ljava/util/Map;
 }
